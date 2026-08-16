@@ -15,9 +15,10 @@ const corsOrigins = process.env.CORS_ALLOWED_ORIGINS
   ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
   : [clientOrigin, `http://localhost:${clientPort}`, `http://127.0.0.1:${clientPort}`];
 
-const dbPath = process.env.DB_PATH
-  ? (path.isAbsolute(process.env.DB_PATH) ? process.env.DB_PATH : path.join(__dirname, '../', process.env.DB_PATH))
-  : path.join(__dirname, '../../data/signal_intake.db');
+const projectRoot = path.resolve(__dirname, '../../');
+const dbPath = process.env.DB_PATH && path.isAbsolute(process.env.DB_PATH)
+  ? process.env.DB_PATH
+  : path.join(projectRoot, 'data/signal_intake.db');
 
 module.exports = {
   // Server & Client Network Config

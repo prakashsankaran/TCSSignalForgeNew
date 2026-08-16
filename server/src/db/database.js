@@ -51,14 +51,22 @@ class Statement {
   }
 
   get(...params) {
+    loadStore();
     if (this.sql.includes('encrypted_oauth_tokens')) {
       const userId = params[0] || 'default_user';
       return store.encrypted_oauth_tokens[userId] || null;
     }
 
     if (this.sql.includes('signal_envelopes')) {
-      const envelopeId = params[0];
-      const env = store.signal_envelopes[envelopeId];
+      let env = null;
+      if (this.sql.includes('content_hash = ?') || this.sql.includes('content_hash=?')) {
+        const targetHash = params[0];
+        env = Object.values(store.signal_envelopes).find(e => e.contentHash === targetHash);
+      } else {
+        const envelopeId = params[0];
+        env = store.signal_envelopes[envelopeId];
+      }
+
       if (!env) return null;
       return {
         envelope_id: env.envelopeId,
@@ -75,6 +83,7 @@ class Statement {
   }
 
   all(...params) {
+    loadStore();
     if (this.sql.includes('encrypted_oauth_tokens')) {
       return Object.values(store.encrypted_oauth_tokens);
     }
@@ -100,6 +109,7 @@ class Statement {
   }
 
   run(...params) {
+    loadStore();
     if (this.sql.includes('INSERT INTO encrypted_oauth_tokens') || this.sql.includes('UPDATE encrypted_oauth_tokens')) {
       const [userId, accessToken, refreshToken, expiryDate, iv, tag, updatedAt] = params;
       store.encrypted_oauth_tokens[userId] = {

@@ -65,6 +65,16 @@ function processRawEvidence(rawInput) {
   // 1. Calculate SHA-256 Hash of raw evidence
   const contentHash = sha256Hash(rawText);
 
+  // Deduplication: If this exact evidence payload is already ingested, return existing envelope
+  try {
+    const existing = db.prepare('SELECT envelope_id, envelope_data FROM signal_envelopes WHERE content_hash = ?').get(contentHash);
+    if (existing && existing.envelope_data) {
+      return JSON.parse(existing.envelope_data);
+    }
+  } catch (e) {
+    // Proceed with ingestion if DB query fails or not found
+  }
+
   // 2. Parse Physical vs Logical conversation blocks
   const parseResult = parseLogicalBlocks(rawText, sourceThreadId, realMessageId || '1904a1f87b2e9c10');
 
