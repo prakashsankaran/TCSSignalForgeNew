@@ -1,3 +1,5 @@
+const request = require('supertest');
+const app = require('../src/server');
 const { encrypt, decrypt, sha256Hash } = require('../src/crypto/encryption');
 const { parseLogicalBlocks } = require('../src/parser/logicalBlockParser');
 const { segmentAtomicUnits } = require('../src/parser/atomicSegmenter');
@@ -11,7 +13,7 @@ const { getSampleConfluenceData } = require('../src/ingestion/confluenceConnecto
 const { processRawEvidence, confirmSignal, generateCandidateSignalMarkdown } = require('../src/services/signalService');
 const { SignalEnvelopeSchema } = require('../src/schemas/signalEnvelopeSchema');
 
-describe('Enterprise Signal Intake Engine Test Suite (20 Tests)', () => {
+describe('Enterprise Signal Intake Engine Test Suite', () => {
 
   // --- CRYPTOGRAPHY & SECURITY TESTS (3 Tests) ---
   describe('1. Cryptography & Security', () => {
@@ -186,8 +188,13 @@ describe('Enterprise Signal Intake Engine Test Suite (20 Tests)', () => {
     });
 
     test('6.3 Review gate fails if sensitivity, consent, reviewer name, or confirmed signal is missing', () => {
-      const sample = getSampleData();
-      const envelope = processRawEvidence(sample);
+      const freshSample = {
+        connectorMode: 'SAMPLE_DATA',
+        sourceThreadId: 'THREAD-TEST-REVIEW-GATE-ISOLATED',
+        realMessageId: '1904a1f87b2e9c99',
+        rawText: 'Subject: Isolated Test Thread\n\n--- Logical Email LOGICAL-EMAIL-001 ---\nFrom: Tester <tester@example.com>\nDate: 2026-07-28T09:15:00Z\nSubject: Test Subject\n\nHi Team,\n\nThe system latency must remain sub-200ms.\n\nRegards,\nTester\n'
+      };
+      const envelope = processRawEvidence(freshSample);
 
       // Missing sensitivity
       expect(() => {
@@ -391,6 +398,57 @@ describe('Enterprise Signal Intake Engine Test Suite (20 Tests)', () => {
       const md = generateCandidateSignalMarkdown(confirmedEnvelope);
       expect(md).toContain('`CONFLUENCE`');
       expect(md).toContain('CONF-ARCH-882');
+    });
+  });
+
+  // --- VALUETHREAD PUBLICATION & DUPLICATE PREVENTION TESTS ---
+  describe('10. ValueThread Publish Governance & Duplicate Prevention', () => {
+    let testEnvelopeId;
+
+    beforeAll(() => {
+      const uniqueRunId = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const testSample = {
+        connectorMode: 'SAMPLE_DATA',
+        sourceThreadId: `THREAD-VALUETHREAD-DEDUP-${uniqueRunId}`,
+        realMessageId: `msg-${uniqueRunId}`,
+        rawText: `Subject: ValueThread Unique Dedup Test ${uniqueRunId}\n\n--- Logical Email LOGICAL-EMAIL-001 ---\nFrom: Prakash <prakash@example.com>\nDate: 2026-07-28T09:15:00Z\nSubject: Test Dedup ${uniqueRunId}\n\nHi Team,\n\nRequirement: Instant claim processing SLA must be 50ms for run ${uniqueRunId}.\n\nRegards,\nPrakash\n`
+      };
+      const env = processRawEvidence(testSample);
+      testEnvelopeId = env.envelopeId;
+    });
+
+    test('10.1 First publication to ValueThread succeeds with 200 OK and assigns import ID', async () => {
+      const res = await request(app)
+        .post(`/api/signals/${testEnvelopeId}/publish/valuethread`)
+        .send();
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body).toHaveProperty('importId');
+      expect(res.body.envelope.publishedToValueThread).toBe(true);
+      expect(res.body.envelope.valueThreadImportId).toBe(res.body.importId);
+    });
+
+    test('10.2 Second publication attempt on the same thread is blocked with 409 Conflict', async () => {
+      const res = await request(app)
+        .post(`/api/signals/${testEnvelopeId}/publish/valuethread`)
+        .send();
+
+      expect(res.status).toBe(409);
+      expect(res.body.success).toBe(false);
+      expect(res.body.alreadyPublished).toBe(true);
+      expect(res.body.error).toMatch(/already been sent to ValueThread/i);
+    });
+
+    test('10.3 GET /api/envelopes includes published_to_valuethread and import ID', async () => {
+      const res = await request(app)
+        .get('/api/envelopes');
+
+      expect(res.status).toBe(200);
+      const target = res.body.find(e => e.envelope_id === testEnvelopeId);
+      expect(target).toBeDefined();
+      expect(target.published_to_valuethread).toBe(true);
+      expect(target.valuethread_import_id).toBeDefined();
     });
   });
 

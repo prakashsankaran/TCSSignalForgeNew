@@ -72,14 +72,36 @@ export default function ExecutiveInsightsView({
           </button>
 
           {onPublishFrugalForge && (
-            <button
-              onClick={onPublishFrugalForge}
-              className="flex items-center gap-2 px-4 py-2 bg-[#17181C] hover:bg-[#292B30] text-white rounded-[10px] text-xs font-semibold shadow-2xs transition-all cursor-pointer"
-              title="Publish confirmed signals to ValueThread Discovery Inbox"
-            >
-              <FontAwesomeIcon icon={faPaperPlane} className="text-[#8B74F8] text-xs" />
-              <span>Send to ValueThread</span>
-            </button>
+            (() => {
+              const isPublished = Boolean(
+                envelope.publishedToValueThread ||
+                envelope.publishedToFrugalforge ||
+                envelope.published_to_valuethread ||
+                envelope.valueThreadImportId ||
+                envelope.frugalforgeImportId
+              );
+              const importId = envelope.valueThreadImportId || envelope.frugalforgeImportId;
+
+              return isPublished ? (
+                <button
+                  disabled={true}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#ECFDF3] text-[#027A48] border border-[#ABEFC6] rounded-[10px] text-xs font-semibold shadow-2xs cursor-not-allowed opacity-95 transition-all select-none"
+                  title={`Thread was already sent to ValueThread (Import ID: ${importId || 'CONFIRMED'}). Resending is locked.`}
+                >
+                  <FontAwesomeIcon icon={faCircleCheck} className="text-[#15966A] text-xs" />
+                  <span>Sent to ValueThread</span>
+                </button>
+              ) : (
+                <button
+                  onClick={onPublishFrugalForge}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#17181C] hover:bg-[#292B30] text-white rounded-[10px] text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                  title="Publish confirmed signals to ValueThread Discovery Inbox"
+                >
+                  <FontAwesomeIcon icon={faPaperPlane} className="text-[#8B74F8] text-xs" />
+                  <span>Send to ValueThread</span>
+                </button>
+              );
+            })()
           )}
         </div>
       </div>

@@ -74,6 +74,9 @@ class Statement {
         source_type: env.source ? env.source.connectorMode : 'SAMPLE_DATA',
         envelope_data: JSON.stringify(env),
         review_status: env.governance ? env.governance.reviewStatus : 'UNREVIEWED',
+        published_to_valuethread: Boolean(env.publishedToValueThread || env.publishedToFrugalforge || env.published_to_valuethread),
+        valuethread_import_id: env.valueThreadImportId || env.frugalforgeImportId || null,
+        valuethread_published_at: env.valueThreadPublishedAt || env.publishedAt || null,
         created_at: env.createdAt,
         updated_at: env.updatedAt
       };
@@ -95,6 +98,9 @@ class Statement {
         source_type: env.source ? env.source.connectorMode : 'SAMPLE_DATA',
         envelope_data: JSON.stringify(env),
         review_status: env.governance ? env.governance.reviewStatus : 'UNREVIEWED',
+        published_to_valuethread: Boolean(env.publishedToValueThread || env.publishedToFrugalforge || env.published_to_valuethread),
+        valuethread_import_id: env.valueThreadImportId || env.frugalforgeImportId || null,
+        valuethread_published_at: env.valueThreadPublishedAt || env.publishedAt || null,
         created_at: env.createdAt,
         updated_at: env.updatedAt
       }));

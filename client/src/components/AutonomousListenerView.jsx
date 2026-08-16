@@ -468,46 +468,65 @@ export default function AutonomousListenerView({
                   <th className="px-6 py-3 font-bold">Envelope ID</th>
                   <th className="px-6 py-3 font-bold">Source Connector</th>
                   <th className="px-6 py-3 font-bold">Review Status</th>
+                  <th className="px-6 py-3 font-bold">ValueThread Sync</th>
                   <th className="px-6 py-3 font-bold">Ingested Timestamp</th>
                   <th className="px-6 py-3 font-bold text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#ECEEF1]">
-                {paginatedEnvelopes.map(item => (
-                  <tr
-                    key={item.envelope_id}
-                    onClick={() => {
-                      onSelectEnvelope(item.envelope_id);
-                      setActiveView('WORKSPACE');
-                    }}
-                    className="hover:bg-[#F8F8F7] transition-colors cursor-pointer group"
-                  >
-                    <td className="px-6 py-3.5 font-mono font-bold text-[#17181C] group-hover:text-[#7157F5] transition-colors">
-                      {item.envelope_id}
-                    </td>
-                    <td className="px-6 py-3.5">
-                      {getConnectorBadge(item.source_type)}
-                    </td>
-                    <td className="px-6 py-3.5">
-                      <span className={`px-2.5 py-1 rounded-[6px] font-mono font-bold text-[10px] ${
-                        item.review_status === 'CONFIRMED'
-                          ? 'bg-[#ECFDF3] text-[#067647] border border-[#ABEFC6]'
-                          : 'bg-[#FFFAEB] text-[#B54708] border border-[#FEDF89]'
-                      }`}>
-                        {item.review_status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3.5 text-[#667085] font-mono">
-                      {new Date(item.created_at).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-3.5 text-right font-semibold text-[#7157F5]">
-                      <span className="inline-flex items-center justify-end gap-1 group-hover:translate-x-0.5 transition-transform">
-                        <span>Review</span>
-                        <FontAwesomeIcon icon={faArrowRight} className="text-xs" />
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {paginatedEnvelopes.map(item => {
+                  const isSent = Boolean(item.published_to_valuethread || item.publishedToValueThread || item.publishedToFrugalforge);
+                  return (
+                    <tr
+                      key={item.envelope_id}
+                      onClick={() => {
+                        onSelectEnvelope(item.envelope_id);
+                        setActiveView('WORKSPACE');
+                      }}
+                      className="hover:bg-[#F8F8F7] transition-colors cursor-pointer group"
+                    >
+                      <td className="px-6 py-3.5 font-mono font-bold text-[#17181C] group-hover:text-[#7157F5] transition-colors">
+                        {item.envelope_id}
+                      </td>
+                      <td className="px-6 py-3.5">
+                        {getConnectorBadge(item.source_type)}
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className={`px-2.5 py-1 rounded-[6px] font-mono font-bold text-[10px] ${
+                          item.review_status === 'CONFIRMED'
+                            ? 'bg-[#ECFDF3] text-[#067647] border border-[#ABEFC6]'
+                            : 'bg-[#FFFAEB] text-[#B54708] border border-[#FEDF89]'
+                        }`}>
+                          {item.review_status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        {isSent ? (
+                          <span
+                            className="px-2.5 py-1 rounded-[6px] font-mono font-bold text-[10px] bg-[#ECFDF3] text-[#067647] border border-[#ABEFC6] inline-flex items-center gap-1.5 shadow-2xs"
+                            title={`Import ID: ${item.valuethread_import_id || 'CONFIRMED'}`}
+                          >
+                            <FontAwesomeIcon icon={faCircleCheck} className="text-[#15966A] text-[10px]" />
+                            <span>Sent to ValueThread</span>
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-[6px] font-mono font-semibold text-[10px] bg-[#FAFAF9] text-[#667085] border border-[#E4E7EC] inline-flex items-center gap-1">
+                            <span>Ready to Send</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3.5 text-[#667085] font-mono">
+                        {new Date(item.created_at).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-3.5 text-right font-semibold text-[#7157F5]">
+                        <span className="inline-flex items-center justify-end gap-1 group-hover:translate-x-0.5 transition-transform">
+                          <span>Review</span>
+                          <FontAwesomeIcon icon={faArrowRight} className="text-xs" />
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

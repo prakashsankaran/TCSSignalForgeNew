@@ -235,8 +235,8 @@ router.post('/poller/poll', async (req, res) => {
   res.json(getPollerStatus());
 });
 
-// Publish Confirmed Signal to FrugalForge Discovery
-router.post('/signals/:id/publish/frugalforge', async (req, res) => {
+// Publish Confirmed Signal to ValueThread / FrugalForge Discovery
+const handlePublishToValueThread = async (req, res) => {
   try {
     const envelopeId = req.params.id;
     let row = db.prepare('SELECT envelope_data, review_status FROM signal_envelopes WHERE envelope_id = ?').get(envelopeId);
@@ -244,6 +244,56 @@ router.post('/signals/:id/publish/frugalforge', async (req, res) => {
 
     let envelope = JSON.parse(row.envelope_data);
     let gov = envelope.governance || {};
+
+    // 1. Strict Duplicate Check: Block if this envelope has already been sent to ValueThread
+    const isAlreadyPublished = Boolean(
+      envelope.publishedToValueThread ||
+      envelope.publishedToFrugalforge ||
+      envelope.published_to_valuethread ||
+      envelope.valueThreadImportId ||
+      envelope.frugalforgeImportId
+    );
+
+    if (isAlreadyPublished) {
+      const existingImportId = envelope.valueThreadImportId || envelope.frugalforgeImportId || 'IMP-PREV-CONFIRMED';
+      return res.status(409).json({
+        success: false,
+        error: `This thread (${envelope.envelopeId}) has already been sent to ValueThread (Import ID: ${existingImportId}). Resending is disabled to prevent duplicate submissions.`,
+        alreadyPublished: true,
+        importId: existingImportId,
+        ideaId: envelope.valueThreadIdeaId || envelope.frugalforgeIdeaId || null,
+        publishedAt: envelope.valueThreadPublishedAt || envelope.publishedAt || null,
+        envelope
+      });
+    }
+
+    // 2. Cross-Envelope Duplicate Check: Check if an identical raw payload or thread ID was already sent
+    const allEnvelopes = db.prepare('SELECT envelope_data FROM signal_envelopes').all();
+    for (const item of allEnvelopes) {
+      try {
+        const otherEnv = JSON.parse(item.envelope_data);
+        if (otherEnv.envelopeId !== envelopeId && (otherEnv.publishedToValueThread || otherEnv.publishedToFrugalforge || otherEnv.published_to_valuethread)) {
+          const matchHash = otherEnv.contentHash && otherEnv.contentHash === envelope.contentHash;
+          const matchThread = Boolean(
+            otherEnv.source?.sourceThreadId &&
+            envelope.source?.sourceThreadId &&
+            otherEnv.source.sourceThreadId === envelope.source.sourceThreadId
+          );
+
+          if (matchHash || matchThread) {
+            const otherImportId = otherEnv.valueThreadImportId || otherEnv.frugalforgeImportId || otherEnv.envelopeId;
+            return res.status(409).json({
+              success: false,
+              error: `This conversation thread (${envelope.source?.sourceThreadId || envelope.envelopeId}) was already sent to ValueThread in envelope ${otherEnv.envelopeId} (Import ID: ${otherImportId}). Duplicate resubmission is blocked.`,
+              alreadyPublished: true,
+              importId: otherImportId,
+              existingEnvelopeId: otherEnv.envelopeId,
+              envelope
+            });
+          }
+        }
+      } catch (e) {}
+    }
 
     // Validate Publish Gate & Auto-commit Review Gate if needed
     let reviewStatus = gov.reviewStatus || envelope.review_state?.review_status || 'UNREVIEWED';
@@ -257,7 +307,7 @@ router.post('/signals/:id/publish/frugalforge', async (req, res) => {
         sensitivity: sensitivity,
         consentGiven: true,
         reviewerName: reviewerName,
-        auditNotes: 'Auto-committed during FrugalForge discovery publication',
+        auditNotes: 'Auto-committed during ValueThread discovery publication',
         signalUpdates: (envelope.extractedSignals || []).map(s => ({
           signalId: s.signalId,
           userStatus: s.userStatus === 'REJECTED' ? 'REJECTED' : 'CONFIRMED'
@@ -399,22 +449,32 @@ router.post('/signals/:id/publish/frugalforge', async (req, res) => {
             status: 'ALREADY_EXISTS'
           };
         } else {
-          throw new Error(responseData.error || `FrugalForge remote endpoint error (HTTP ${response.status})`);
+          throw new Error(responseData.error || `ValueThread remote endpoint error (HTTP ${response.status})`);
         }
       } else {
         data = responseData;
       }
     } catch (e) {
-      if (e.message && e.message.includes('FrugalForge remote endpoint error')) {
+      if (e.message && e.message.includes('ValueThread remote endpoint error')) {
         throw e;
       }
-      console.warn('FrugalForge remote endpoint offline or local receipt:', e.message);
+      console.warn('ValueThread remote endpoint offline or local receipt:', e.message);
     }
 
     // Persist publication outcome
+    const finalImportId = data.importId || data.signalRecord?.importId || `IMP-${Date.now()}`;
+    const finalIdeaId = data.importedIdeaId || data.ideaId || null;
+    const finalPublishedAt = new Date().toISOString();
+
+    envelope.publishedToValueThread = true;
     envelope.publishedToFrugalforge = true;
-    envelope.frugalforgeImportId = data.importId || data.signalRecord?.importId || `IMP-${Date.now()}`;
-    envelope.frugalforgeIdeaId = data.importedIdeaId || data.ideaId || null;
+    envelope.published_to_valuethread = true;
+    envelope.valueThreadImportId = finalImportId;
+    envelope.frugalforgeImportId = finalImportId;
+    envelope.valueThreadIdeaId = finalIdeaId;
+    envelope.frugalforgeIdeaId = finalIdeaId;
+    envelope.valueThreadPublishedAt = finalPublishedAt;
+    envelope.publishedAt = finalPublishedAt;
 
     db.prepare('UPDATE signal_envelopes SET envelope_data = ? WHERE envelope_id = ?').run(
       JSON.stringify(envelope),
@@ -424,24 +484,28 @@ router.post('/signals/:id/publish/frugalforge', async (req, res) => {
     // Audit log
     db.prepare('INSERT INTO audit_logs (envelope_id, action, reviewer, timestamp, details) VALUES (?, ?, ?, ?, ?)').run(
       envelopeId,
-      'FRUGALFORGE_PUBLISH_SUCCEEDED',
+      'VALUETHREAD_PUBLISH_SUCCEEDED',
       gov.reviewerName || 'Signal Reviewer',
-      new Date().toISOString(),
-      `Published signal ${envelopeId} to FrugalForge as ${envelope.frugalforgeImportId}`
+      finalPublishedAt,
+      `Published signal ${envelopeId} to ValueThread as ${finalImportId}`
     );
 
     res.json({
       success: true,
-      message: `Published to FrugalForge successfully!`,
-      importId: envelope.frugalforgeImportId,
-      ideaId: envelope.frugalforgeIdeaId,
-      status: 'IMPORTED'
+      message: `Published to ValueThread successfully!`,
+      importId: envelope.valueThreadImportId,
+      ideaId: envelope.valueThreadIdeaId,
+      status: 'IMPORTED',
+      envelope
     });
   } catch (err) {
-    console.error('FrugalForge Publish Error:', err);
+    console.error('ValueThread Publish Error:', err);
     res.status(500).json({ error: err.message });
   }
-});
+};
+
+router.post('/signals/:id/publish/frugalforge', handlePublishToValueThread);
+router.post('/signals/:id/publish/valuethread', handlePublishToValueThread);
 
 // Audit Logs History Endpoint
 router.get('/audit-logs', (req, res) => {

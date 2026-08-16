@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCheck,
+  faCircleCheck,
   faPaperPlane,
   faFileCode,
   faFileLines,
@@ -28,6 +29,17 @@ export default function GovernancePanel({
   const [errorMsg, setErrorMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const isPublished = Boolean(
+    envelope.publishedToValueThread ||
+    envelope.publishedToFrugalforge ||
+    envelope.published_to_valuethread ||
+    envelope.valueThreadImportId ||
+    envelope.frugalforgeImportId
+  );
+  const importId = envelope.valueThreadImportId || envelope.frugalforgeImportId;
+
+  const isConfirmed = governance.reviewStatus === 'CONFIRMED' || isPublished;
+
   const handleCommit = async () => {
     setErrorMsg('');
     try {
@@ -45,6 +57,10 @@ export default function GovernancePanel({
   };
 
   const handlePublish = async () => {
+    if (isPublished) {
+      setErrorMsg(`This thread was already sent to ValueThread (Import ID: ${importId}). Resending is disabled.`);
+      return;
+    }
     setErrorMsg('');
     try {
       setSubmitting(true);
@@ -64,8 +80,6 @@ export default function GovernancePanel({
       setSubmitting(false);
     }
   };
-
-  const isConfirmed = governance.reviewStatus === 'CONFIRMED' || envelope.publishedToFrugalforge;
 
   return (
     <div className="shrink-0 bg-white border-b border-[#ECEEF1] px-6 py-3.5 space-y-2.5">
@@ -134,17 +148,28 @@ export default function GovernancePanel({
             <span>{isConfirmed ? 'Re-Commit Gate' : 'Confirm & Commit'}</span>
           </button>
 
-          {/* Send to ValueThread Button (Restrained Violet #7157F5) */}
+          {/* Send to ValueThread Button (Active Violet vs Disabled Green Synced) */}
           {onPublishFrugalForge && (
-            <button
-              onClick={handlePublish}
-              disabled={submitting}
-              className="flex items-center gap-2 px-4 py-2 bg-[#7157F5] hover:bg-[#5E44E6] text-white text-xs font-semibold rounded-[10px] shadow-xs transition-all cursor-pointer disabled:opacity-50"
-              title="Publish SignalEnvelope directly to ValueThread Signal Inbox"
-            >
-              <FontAwesomeIcon icon={faPaperPlane} className="text-white text-xs" />
-              <span>Send to ValueThread</span>
-            </button>
+            isPublished ? (
+              <button
+                disabled={true}
+                className="flex items-center gap-2 px-4 py-2 bg-[#ECFDF3] text-[#027A48] border border-[#ABEFC6] text-xs font-semibold rounded-[10px] shadow-2xs cursor-not-allowed opacity-95 transition-all select-none"
+                title={`This thread was already sent to ValueThread (Import ID: ${importId || 'CONFIRMED'}). Resending is locked to prevent duplicate submissions.`}
+              >
+                <FontAwesomeIcon icon={faCircleCheck} className="text-[#15966A] text-xs" />
+                <span>Sent to ValueThread</span>
+              </button>
+            ) : (
+              <button
+                onClick={handlePublish}
+                disabled={submitting}
+                className="flex items-center gap-2 px-4 py-2 bg-[#7157F5] hover:bg-[#5E44E6] text-white text-xs font-semibold rounded-[10px] shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                title="Publish SignalEnvelope directly to ValueThread Signal Inbox"
+              >
+                <FontAwesomeIcon icon={submitting ? faSpinner : faPaperPlane} className={submitting ? 'animate-spin' : 'text-white text-xs'} />
+                <span>Send to ValueThread</span>
+              </button>
+            )
           )}
 
           {/* Export JSON */}

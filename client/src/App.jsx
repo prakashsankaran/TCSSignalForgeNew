@@ -384,16 +384,52 @@ export default function App() {
 
   const handlePublishToFrugalForge = async () => {
     if (!currentEnvelope) return;
+
+    // Check if this thread has already been sent to ValueThread
+    const isAlreadyPublished = Boolean(
+      currentEnvelope.publishedToValueThread ||
+      currentEnvelope.publishedToFrugalforge ||
+      currentEnvelope.published_to_valuethread ||
+      currentEnvelope.valueThreadImportId ||
+      currentEnvelope.frugalforgeImportId
+    );
+
+    if (isAlreadyPublished) {
+      const importId = currentEnvelope.valueThreadImportId || currentEnvelope.frugalforgeImportId || 'CONFIRMED';
+      showToast(`⚠️ Thread ${currentEnvelope.envelopeId} was already sent to ValueThread (${importId}). Resending is locked.`, 'error');
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/signals/${currentEnvelope.envelopeId}/publish/frugalforge`, {
+      const res = await fetch(`${API_BASE_URL}/api/signals/${currentEnvelope.envelopeId}/publish/valuethread`, {
         method: 'POST'
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to publish signal to ValueThread.');
+      
+      if (!res.ok) {
+        if (res.status === 409 || data.alreadyPublished) {
+          const importId = data.importId || currentEnvelope.valueThreadImportId || currentEnvelope.frugalforgeImportId || 'ALREADY_SENT';
+          showToast(`⚠️ ${data.error || `This thread was already sent to ValueThread (Import ID: ${importId}).`}`, 'error');
+          if (data.envelope) {
+            setCurrentEnvelope(data.envelope);
+          } else {
+            handleSelectEnvelope(currentEnvelope.envelopeId);
+          }
+          fetchEnvelopesList();
+          return;
+        }
+        throw new Error(data.error || 'Failed to publish signal to ValueThread.');
+      }
+
       const importId = data.importId || data.result?.importId || data.envelopeId || 'IMP-SIG-OK';
       showToast(`✅ Published to ValueThread Signal Inbox! Import ID: ${importId}`, 'success');
-      handleSelectEnvelope(currentEnvelope.envelopeId);
+      if (data.envelope) {
+        setCurrentEnvelope(data.envelope);
+      } else {
+        handleSelectEnvelope(currentEnvelope.envelopeId);
+      }
+      fetchEnvelopesList();
     } catch (err) {
       showToast(`❌ Publication Error: ${err.message}`, 'error');
     } finally {
@@ -495,7 +531,7 @@ export default function App() {
             </div>
 
             {/* Architecture Metrics Info Banner */}
-            {currentEnvelope && <InfoBanner source={currentEnvelope.source} />}
+            {currentEnvelope && <InfoBanner source={currentEnvelope.source} envelope={currentEnvelope} />}
 
             {/* Full-Height, Full-Width Dual-Pane Review */}
             <DualPaneReview
