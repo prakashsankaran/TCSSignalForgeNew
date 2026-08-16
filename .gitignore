@@ -1,0 +1,80 @@
+# ==============================================================================
+# Dependencies
+# ==============================================================================
+node_modules/
+/.pnp
+.pnp.js
+
+# ==============================================================================
+# Environment Variables & Secrets (Do not commit live credentials)
+# ==============================================================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+server/.env
+client/.env
+*.env
+*.env.*
+!.env.example
+!server/.env.example
+!client/.env.example
+!*.env.example
+
+# ==============================================================================
+# Database & Local Data Storage
+# ==============================================================================
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.sqlite
+data/*.sqlite3
+data/signal_intake_store.json
+*.db
+*.sqlite
+*.sqlite3
+
+# ==============================================================================
+# Production & Build Outputs
+# ==============================================================================
+dist/
+dist-ssr/
+build/
+*.local
+
+# ==============================================================================
+# Logs & Diagnostic Files
+# ==============================================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==============================================================================
+# Testing & Coverage Reports
+# ==============================================================================
+coverage/
+.nyc_output/
+
+# ==============================================================================
+# Editor & OS Artifacts
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE Configuration
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo

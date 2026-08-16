@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #FAFAF9;
+    color: #17181C;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  button {
+    border-radius: 12px;
+  }
+}
+
+/* 12px Radius Utility */
+.radius-12 {
+  border-radius: 12px !important;
+}
+
+/* Custom Minimal Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D0D5DD;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #98A2B3;
+}
+
+/* Evidence Line Highlighting (Restrained Violet Theme) */
+.line-highlight {
+  background-color: #F4F1FF !important;
+  border-left: 3px solid #7157F5 !important;
+  color: #2D1B80 !important;
+  font-weight: 500;
+}
+
+.summary-section-line {
+  background-color: #FFF1F2 !important;
+  color: #9F1239 !important;
+}
+
+/* Atmospheric Hero Watermark Styles (5-9% subtle embedded watermark) */
+.hero-background-architecture {
+  position: absolute;
+  inset: 0;
+  background-size: 1150px auto;
+  background-repeat: no-repeat;
+  background-position: center 32%;
+  opacity: 0.075;
+  filter: saturate(0.7) contrast(0.85) blur(0.3px);
+  mask-image: radial-gradient(
+    ellipse at 52% 38%,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.35) 40%,
+    transparent 72%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse at 52% 38%,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.35) 40%,
+    transparent 72%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .hero-background-architecture {
+    background-size: 750px auto;
+    opacity: 0.05;
+    background-position: 65% 35%;
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EnterpriseSignalImportRequest",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "sourceApplication",
+    "publicationId",
+    "publishedAt",
+    "signal",
+    "statements"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": ["1.0"]
+    },
+    "sourceApplication": {
+      "type": "string"
+    },
+    "sourceApplicationVersion": {
+      "type": "string"
+    },
+    "publicationId": {
+      "type": "string"
+    },
+    "publishedAt": {
+      "type": "string"
+    },
+    "signal": {
+      "type": "object",
+      "required": [
+        "signalId",
+        "candidateTitle",
+        "source",
+        "governance",
+        "provenance",
+        "review"
+      ],
+      "properties": {
+        "signalId": { "type": "string" },
+        "candidateTitle": { "type": "string" },
+        "originalSourceTitle": { "type": "string" },
+        "source": {
+          "type": "object",
+          "required": ["sourceType", "sourceSystem", "connectorMode", "sourceObjectId"],
+          "properties": {
+            "sourceType": {
+              "type": "string",
+              "enum": ["GMAIL_THREAD", "GOOGLE_MEET_TRANSCRIPT"]
+            },
+            "sourceSystem": {
+              "type": "string",
+              "enum": ["GOOGLE_GMAIL", "GOOGLE_MEET"]
+            },
+            "connectorMode": {
+              "type": "string",
+              "enum": ["LIVE_GOOGLE_API", "FILE_BACKED", "SAMPLE_DATA"]
+            },
+            "conversationStructure": { "type": "string" },
+            "sourceObjectId": { "type": "string" },
+            "sourceThreadId": { "type": "string" },
+            "conferenceRecordId": { "type": "string" },
+            "transcriptId": { "type": "string" },
+            "sourceDeepLink": { "type": "string" }
+          }
+        },
+        "governance": {
+          "type": "object",
+          "required": ["sensitivity", "containsPotentialPII", "consentConfirmed"],
+          "properties": {
+            "sensitivity": {
+              "type": "string",
+              "enum": ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"]
+            },
+            "containsPotentialPII": { "type": "boolean" },
+            "piiCategories": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "consentConfirmed": { "type": "boolean" }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "required": ["contentHash", "connectorVersion", "parserVersion", "analyzerMode"],
+          "properties": {
+            "contentHash": { "type": "string" },
+            "connectorVersion": { "type": "string" },
+            "parserVersion": { "type": "string" },
+            "analyzerMode": {
+              "type": "string",
+              "enum": ["RULES", "OLLAMA", "OTHER"]
+            }
+          }
+        },
+        "review": {
+          "type": "object",
+          "required": ["status", "reviewedBy", "reviewedAt"],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": ["CONFIRMED"]
+            },
+            "reviewedBy": { "type": "string" },
+            "reviewedAt": { "type": "string" },
+            "comments": { "type": "string" }
+          }
+        }
+      }
+    },
+    "statements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "statementId",
+          "text",
+          "primaryCategory",
+          "confidence",
+          "reviewStatus",
+          "sourceReferences"
+        ],
+        "properties": {
+          "statementId": { "type": "string" },
+          "text": { "type": "string" },
+          "primaryCategory": { "type": "string" },
+          "secondaryTags": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "sourceReferences": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "speaker": { "type": "string" },
+          "speakerRole": { "type": "string" },
+          "occurredAt": { "type": "string" },
+          "confidence": {
+            "type": "string",
+            "enum": ["HIGH", "MEDIUM", "LOW"]
+          },
+          "reviewStatus": {
+            "type": "string",
+            "enum": ["CONFIRMED", "EDITED"]
+          },
+          "originalText": { "type": "string" }
+        }
+      }
+    },
+    "stakeholderViewpoints": { "type": "array" },
+    "unresolvedQuestions": { "type": "array" },
+    "conflicts": { "type": "array" },
+    "actionItems": { "type": "array" }
+  }
+}
