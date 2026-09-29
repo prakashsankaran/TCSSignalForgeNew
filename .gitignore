@@ -41,6 +41,7 @@ data/signal_intake_store.json
 dist/
 dist-ssr/
 build/
+.vite/
 *.local
 
 # ==============================================================================
